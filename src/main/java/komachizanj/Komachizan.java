@@ -1,6 +1,5 @@
 package komachizanj;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -18,27 +17,34 @@ public class Komachizan {
         operatorToRank.put(')', 0);
     }
 
-    private static BigDecimal calculate(String expression) {
+    private static Rational calculate(String expression) {
 
         ArrayDeque<Character> opStack = new ArrayDeque<>();
         ArrayDeque<Rational> varStack = new ArrayDeque<>();
-        StringBuilder num = new StringBuilder();
-        boolean enablePlusOrMinusSign = false;
+        StringBuilder number = new StringBuilder();
+        boolean plusOrMinusSign = false;
         String expr = "(" + expression + ")";
 
-        for (char it : expr.toCharArray()) {
-            if ('0' <= it && it <= '9' || enablePlusOrMinusSign && (it == '+' || it == '-')) {
-                enablePlusOrMinusSign = false;
-                num.append(it);
-            } else {
-                enablePlusOrMinusSign = it == '(';
+        try {
+            for (int i = 0; i < expr.length(); i++) {
+                char c = expr.charAt(i);
 
-                if (num.length() != 0) {
-                    varStack.push(new Rational(Long.parseLong(num.toString()), 1));
-                    num.setLength(0);
+                if ('0' <= c && c <= '9' || plusOrMinusSign && (c == '+' || c == '-')) {
+                    plusOrMinusSign = false;
+                    number.append(c);
+                    continue;
                 }
 
-                while (!opStack.isEmpty() && opStack.peek() != '(' && operatorToRank.get(opStack.peek()) >= operatorToRank.get(it)) {
+                plusOrMinusSign = c == '(';
+
+                if (number.length() > 0) {
+                    varStack.push(new Rational(Long.parseLong(number.toString())));
+                    number.setLength(0);
+                }
+
+                while (!opStack.isEmpty()
+                        && opStack.peek() != '('
+                        && operatorToRank.get(opStack.peek()) >= operatorToRank.get(c)) {
                     Character op = opStack.pop();
                     Rational a = varStack.pop();
                     Rational b = varStack.pop();
@@ -47,11 +53,10 @@ public class Komachizan {
                             varStack.push(b.times(a));
                             break;
                         case '/':
-                            if (a.getNumerator() != 0) {
-                                varStack.push(b.div(a));
-                            } else {
-                                throw new IllegalArgumentException("division by zero : " + expression);
+                            if (a.getNumerator() == 0) {
+                                throw new ArithmeticException("division by zero : " + expression);
                             }
+                            varStack.push(b.div(a));
                             break;
                         case '+':
                             varStack.push(b.plus(a));
@@ -64,53 +69,50 @@ public class Komachizan {
                     }
                 }
 
-                if (it == ')') {
+                if (c == ')') {
                     opStack.pop();
                 } else {
-                    opStack.push(it);
+                    opStack.push(c);
                 }
             }
-        }
 
-        if (opStack.isEmpty() && varStack.size() == 1) {
-            return varStack.pop().toBigDecimal();
-        } else {
-            throw new IllegalArgumentException("syntax error : " + expression);
+            return varStack.pop();
+
+        } catch (NoSuchElementException e) {
+            throw new IllegalArgumentException("syntax error : $expression");
         }
     }
 
     private static void komachizan() {
 
-        final String target = "2017";
+        final int target = 2017;
         final Character[] digits = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
         final String[] operators = {"", "+", "-", "*", "/"};
         final String[] firstOperators = {"", "-"};
 
-        List<String> first = Arrays.stream(firstOperators).map(op -> op + digits[0]).collect(Collectors.toList());
+        final List<String> first = Arrays.stream(firstOperators).map(op -> op + digits[0]).collect(Collectors.toList());
 
-        List<String> expressions = Arrays.stream(digits)
+        final List<String> expressions = Arrays.stream(digits)
                 .skip(1)
                 .map(num -> Arrays.stream(operators).map(op -> op + num).collect(Collectors.toList()))
                 .reduce(first, (acc, list) -> acc.stream().flatMap(a -> list.stream().map(b -> a + b)).collect(Collectors.toList()));
 
-        final BigDecimal ans = new BigDecimal(target);
+        final Rational answer = new Rational(target);
 
-        AtomicInteger cnt = new AtomicInteger();
+        final AtomicInteger cnt = new AtomicInteger();
 
         expressions
                 .parallelStream()
-                .filter(it -> calculate(it).compareTo(ans) == 0)
+                .filter(it -> calculate(it).compareTo(answer) == 0)
                 .collect(Collectors.toList())
-                .forEach(it -> {
-                    System.out.println(cnt.incrementAndGet() + " : " + it + " = " + target);
-                });
+                .forEach(it -> System.out.println(cnt.incrementAndGet() + " : " + it + " = " + target));
     }
 
     public static void main(String[] args) {
 
-        long start = System.currentTimeMillis();
+        final long start = System.currentTimeMillis();
         komachizan();
-        long end = System.currentTimeMillis();
+        final long end = System.currentTimeMillis();
 
         System.out.printf("%n処理時間 : %.3f [sec]%n", (end - start) / 1000.0);
     }

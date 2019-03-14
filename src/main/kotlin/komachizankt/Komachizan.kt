@@ -1,6 +1,5 @@
 package komachizankt
 
-import java.math.BigDecimal
 import java.util.*
 import java.util.stream.Collectors
 import kotlin.system.measureTimeMillis
@@ -20,57 +19,67 @@ val operatorToRank: Map<Char, Int> = mapOf(
  * @param expression 数式の文字列。
  * @return 計算結果。
  */
-fun calculate(expression: String): BigDecimal {
+fun calculate(expression: String): Rational {
 
     val opStack = ArrayDeque<Char>()
     val varStack = ArrayDeque<Rational>()
-    val num = StringBuilder()
-    var enablePlusOrMinusSign = false
+    val number = StringBuilder()
+    var plusOrMinusSign = false
     val expr = "($expression)"
 
-    expr.forEach {
-        if (it in '0'..'9' || enablePlusOrMinusSign && (it == '+' || it == '-')) {
-            enablePlusOrMinusSign = false
-            num.append(it)
-        } else {
-            enablePlusOrMinusSign = it == '('
-
-            if (num.isNotEmpty()) {
-                varStack.push(Rational(num.toString().toLong()))
-                num.setLength(0)
+    try {
+        for (c in expr) {
+            if (c in '0'..'9' || plusOrMinusSign && (c == '+' || c == '-')) {
+                plusOrMinusSign = false
+                number.append(c)
+                continue
             }
 
-            while (opStack.isNotEmpty() && opStack.peek() != '(' && operatorToRank[opStack.peek()]!! >= operatorToRank [it]!!) {
+            plusOrMinusSign = c == '('
+
+            if (number.isNotEmpty()) {
+                varStack.push(Rational(number.toString().toLong()))
+                number.clear()
+            }
+
+            while (opStack.isNotEmpty()
+                    && opStack.peek() != '('
+                    && requireNotNull(operatorToRank[opStack.peek()]) >= requireNotNull(operatorToRank[c])
+            ) {
                 val op = opStack.pop()
                 val a = varStack.pop()
                 val b = varStack.pop()
                 when (op) {
                     '*' -> varStack.push(b * a)
                     '/' -> {
-                        require(a.numerator != 0L) { "division by zero : $expression" }
+                        if (a.numerator == 0L) {
+                            throw ArithmeticException("division by zero : $expression")
+                        }
                         varStack.push(b / a)
                     }
                     '+' -> varStack.push(b + a)
                     '-' -> varStack.push(b - a)
-                    else -> error("syntax error : $expression")
+                    else -> throw IllegalArgumentException("syntax error : $expression")
                 }
             }
 
-            if (it == ')') {
+            if (c == ')') {
                 opStack.pop()
             } else {
-                opStack.push(it)
+                opStack.push(c)
             }
         }
-    }
 
-    require(opStack.isEmpty() && varStack.size == 1) { "syntax error : $expression" }
-    return varStack.pop().toBigDecimal()
+        return varStack.pop()
+
+    } catch (e: NoSuchElementException) {
+        throw IllegalArgumentException("syntax error : $expression")
+    }
 }
 
 fun komachizan() {
 
-    val target: String = "2017"
+    val target = 2017
     val digits = "123456789".toCharArray()
     val operators = arrayOf("", "+", "-", "*", "/")
     val firstOperators = arrayOf("", "-")
@@ -85,18 +94,18 @@ fun komachizan() {
         acc.flatMap { a -> list.map { b -> "$a$b" } }
     }
 
-    val ans = BigDecimal(target)
+    val answer = Rational(target)
 
     expressions
             .parallelStream()
-            .filter { calculate(it).compareTo(ans) == 0 }
+            .filter { calculate(it).compareTo(answer) == 0 }
             .collect(Collectors.toList())
             .forEachIndexed { index, it ->
                 println("${index + 1} : $it = $target")
             }
 }
 
-fun main(args: Array<String>) {
+fun main() {
 
     val elapsed = measureTimeMillis {
         komachizan()

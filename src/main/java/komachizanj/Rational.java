@@ -1,7 +1,5 @@
 package komachizanj;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
@@ -19,14 +17,18 @@ public class Rational implements Comparable<Rational> {
         return denominator;
     }
 
+    public Rational(long numerator) {
+        this(numerator, 1);
+    }
+
     public Rational(long numerator, long denominator) {
-        if (denominator != 0L) {
-            long divisor = gcd(Math.abs(numerator), Math.abs(denominator));
-            this.numerator = numerator / divisor;
-            this.denominator = denominator / divisor;
-        } else {
+        if (denominator == 0L) {
             throw new IllegalArgumentException("denominator must not be zero");
         }
+
+        long divisor = gcd(Math.abs(numerator), Math.abs(denominator));
+        this.numerator = numerator / divisor;
+        this.denominator = denominator / divisor;
     }
 
     public Rational plus(Rational that) {
@@ -58,14 +60,18 @@ public class Rational implements Comparable<Rational> {
         return BigDecimal.valueOf(numerator).divide(BigDecimal.valueOf(denominator), scale, roundingMode);
     }
 
-    private long gcd(long a, long b) {
-        if (b == 0L) return a;
-        else return gcd(b, a % b);
-    }
-
     @Override
     public String toString() {
         return numerator + "/" + denominator;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Rational rational = (Rational) o;
+        return numerator == rational.numerator &&
+                denominator == rational.denominator;
     }
 
     @Override
@@ -74,8 +80,12 @@ public class Rational implements Comparable<Rational> {
     }
 
     @Override
-    public int compareTo(@NotNull Rational other) {
+    public int compareTo(Rational other) {
         Objects.requireNonNull(other);
-        return new Long(numerator * other.denominator).compareTo(other.numerator * denominator);
+        return Long.compare(numerator * other.denominator, other.numerator * denominator);
+    }
+
+    private long gcd(long a, long b) {
+        return b == 0L ? a : gcd(b, a % b);
     }
 }

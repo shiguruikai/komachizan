@@ -6,16 +6,17 @@ import kotlin.math.abs
 
 class Rational(numerator: Long, denominator: Long = 1L) : Comparable<Rational> {
 
+    val numerator: Long
+    val denominator: Long
+
     constructor(numerator: Int, denominator: Int = 1) : this(numerator.toLong(), denominator.toLong())
-
-    private val divisor = gcd(abs(numerator), abs(denominator))
-
-    val numerator: Long = numerator / divisor
-
-    val denominator: Long = denominator / divisor
 
     init {
         require(denominator != 0L) { "denominator must not be zero" }
+
+        val divisor = gcd(abs(numerator), abs(denominator))
+        this.numerator = numerator / divisor
+        this.denominator = denominator / divisor
     }
 
     operator fun plus(that: Rational): Rational =
